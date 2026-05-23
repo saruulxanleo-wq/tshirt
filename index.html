@@ -219,6 +219,14 @@
   .att-lbl{font-size:10px;color:var(--muted);margin-top:4px}
   .preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
   .preset-grid .preset{text-align:center}
+  .up-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .up-slot{border:2px dashed var(--line);border-radius:12px;min-height:130px;display:grid;place-items:center;text-align:center;color:var(--muted);cursor:pointer;transition:.15s;padding:10px;overflow:hidden}
+  .up-slot:hover{border-color:var(--accent);color:var(--txt)}
+  .up-slot img{max-width:100%;max-height:120px;border-radius:8px}
+  .img-pick{display:flex;gap:10px;flex-wrap:wrap}
+  .img-pick .ip{width:74px;height:74px;border:2px solid var(--line);border-radius:10px;cursor:pointer;overflow:hidden;display:grid;place-items:center;background:var(--panel2)}
+  .img-pick .ip.sel{border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,140,255,.25)}
+  .img-pick .ip img{max-width:100%;max-height:100%;object-fit:contain}
   .ctrl-box{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:6px}
   .ctrl-box .lab{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin:10px 0 4px}
   .sizechart{font-size:12px;color:var(--muted);margin-top:10px}
@@ -335,7 +343,7 @@
             <button class="btn sm" id="pick3d">📁 .glb файл сонгох</button>
             <input type="file" id="glbInput" accept=".glb,model/gltf-binary" class="hidden">
           </div>
-          <span class="hint-pill">🖱 чирж 360° эргүүлнэ · дугуйгаар томруулна</span>
+          <span class="hint-pill">🖱 чирж 360° эргүүлнэ · Лого эвдэрсэн харагдвал 3D загварын үрчлээснээс болсон тул асуудалгүй — хүсвэл 2D хэлбэрээр харна уу</span>
         </div>
       </div>
 
@@ -364,15 +372,15 @@ const PRODUCTS = {
   pants: {key:'pants',  name:'Өмд',    ico:'👖', enabled:false, basePrice:58000},
 };
 const COLORS = [
-  {id:'white', name:'Цагаан', hex:'#f3f3f3', txt:'#1a1a1a'},
-  {id:'black', name:'Хар',    hex:'#202024', txt:'#ffffff'},
-  {id:'navy',  name:'Хөх',    hex:'#2a3b63', txt:'#ffffff'},
-  {id:'red',   name:'Улаан',  hex:'#bb3340', txt:'#ffffff'},
-  {id:'gray',  name:'Саарал', hex:'#a7adb4', txt:'#1a1a1a'},
+  {id:'white', name:'Цагаан', hex:'#f7f7f7', txt:'#1a1a1a'},
+  {id:'black', name:'Хар',    hex:'#141414', txt:'#ffffff'},
+  {id:'navy',  name:'Хөх',    hex:'#1f2f5e', txt:'#ffffff'},
+  {id:'red',   name:'Улаан',  hex:'#d11f1f', txt:'#ffffff'},
+  {id:'gray',  name:'Саарал', hex:'#8a8f97', txt:'#1a1a1a'},
 ];
-const SIZES = ['S','M','L','XL','XXL'];
-const SIZE_CHART = {S:{chest:48,len:68},M:{chest:51,len:71},L:{chest:54,len:74},XL:{chest:57,len:77},XXL:{chest:60,len:80}};
-const SIZE_SURCHARGE = {S:0,M:0,L:0,XL:2000,XXL:4000};
+const SIZES = ['S','M','L','XL'];
+const SIZE_CHART = {S:{chest:48,len:68},M:{chest:51,len:71},L:{chest:54,len:74},XL:{chest:57,len:77}};
+const SIZE_SURCHARGE = {S:0,M:0,L:0,XL:2000};
 const FEE_IMG = 8000, FEE_TXT = 4000;
 /* standard placements (x,y in % of print area, scale) — prevents user mis-positioning */
 const PLACEMENTS = [
@@ -396,7 +404,7 @@ const newLayers = ()=>({
 const newQty = ()=>{const o={};COLORS.forEach(c=>{o[c.id]={};SIZES.forEach(s=>o[c.id][s]=0);});return o;};
 let state = {
   view:'home', step:1, product:'tshirt',
-  rawImg:null, designImg:null,
+  images:[null,null],
   color:'white', side:'front', rotY:0, mode3d:false,
   qty:newQty(),
   customer:{name:'',phone:'',email:'',address:''},
@@ -811,44 +819,41 @@ function renderPanel(){
   bindPanel();
 }
 function panelUpload(p){
+  const any=state.images.some(x=>x);
+  const slot=(i)=>`<div class="up-slot" data-i="${i}">${state.images[i]?`<img src="${state.images[i]}">`:`<span>📤<br>Зураг ${i+1}${i===1?'<br><small>(заавал биш)</small>':''}</span>`}</div>`;
   p.innerHTML=`<h2>1. Зургаа оруулна уу</h2>
-  <p class="hint">Зургаа оруулаад шууд үргэлжлүүлж болно. Дэвсгэр арилгах нь <b>сонголт</b> — зөвхөн гэрэл зураг/субъектэд хэрэгтэй (цагаан дэвсгэртэй хавтгай графикт хэрэггүй).</p>
-  <div class="drop" id="drop">${state.rawImg?`<img src="${state.rawImg}" style="max-width:100%;max-height:150px;border-radius:8px">`:'📤 Дарж зураг сонгох<br><span style="font-size:12px">PNG / JPG</span>'}</div>
-  <input type="file" id="file" accept="image/*" class="hidden">
+  <p class="hint">1 буюу 2 зураг оруулж болно. Дараагийн алхамд аль зургийг урд/ард талд тавихаа дарж сонгоно. Нэг зургийг хоёр талд ч ашиглаж болно.</p>
+  <div class="up-grid">${slot(0)}${slot(1)}</div>
+  <input type="file" id="file0" accept="image/*" class="hidden">
+  <input type="file" id="file1" accept="image/*" class="hidden">
   <div class="divider"></div>
   <label class="field">Дэвсгэр арилгах — заавал биш</label>
   <input type="text" id="apikey" placeholder="remove.bg API key">
-  <div class="row" style="margin-top:10px"><button class="btn sm" id="rmbg" ${state.rawImg?'':'disabled'}>✂️ remove.bg-ээр арилгах</button><span class="badge-key" id="bgState">${state.designImg&&state.designImg!==state.rawImg?'✓ Арилгасан':''}</span></div>
-  <div class="note">Зураг анхдагчаар <b>эх хэвээрээ</b> ашиглагдана. Цагаан/тунгалаг дэвсгэртэй дизайн цагаан футболканд төгс тохирно. Өнгөт футболканд цэвэр тавихын тулд <b>тунгалаг (transparent) PNG</b> оруулах, эсвэл remove.bg API key ашиглана уу.<br><br>(Дотоод энгийн арилгагчийг устгасан — учир нь дизайнтай ижил өнгийн дэвсгэрийг таних чадваргүй, зургийг эвддэг байсан.)</div>
+  <div class="row" style="margin-top:10px"><button class="btn sm" id="rmbg" ${any?'':'disabled'}>✂️ remove.bg-ээр арилгах</button><span class="badge-key" id="bgState"></span></div>
+  <div class="note">Зураг анхдагчаар <b>эх хэвээрээ</b> ашиглагдана. Цагаан/тунгалаг дэвсгэртэй дизайн цагаан футболканд төгс тохирно. Өнгөт футболканд цэвэр тавихын тулд <b>тунгалаг (transparent) PNG</b> оруулах, эсвэл remove.bg API key ашиглана уу.</div>
   <div class="divider"></div>
-  <button class="btn primary" id="next" ${state.designImg?'':'disabled'}>Үргэлжлүүлэх →</button>`;
+  <button class="btn primary" id="next" ${any?'':'disabled'}>Үргэлжлүүлэх →</button>`;
 }
 function panelDesign(p){
   const L=state.layers[state.side];
-  const sel=state.selected&&(state.selected==='image'?L.image.src:L.text.val);
-  const selL=sel?L[state.selected]:null;
+  const imgs=[]; state.images.forEach((src,i)=>{ if(src) imgs.push({src,i}); });
   p.innerHTML=`<h2>2. Дизайнаа байрлуул</h2>
-  <p class="hint">Идэвхтэй тал: <b>${state.side==='front'?'Урд':'Ард'}</b>. Зураг/текстийг чирж зөөнө, доороос томруулж/эргүүлнэ.</p>
+  <p class="hint">Идэвхтэй тал: <b>${state.side==='front'?'Урд':'Ард'}</b>. Зургаа дарж сонгоод, доороос байршлыг нь сонгоно. Нэг зургийг урд, ард хоёуланд ашиглаж болно.</p>
   <label class="field">Урьдчилан харах өнгө</label>
   <div class="swatches" id="sw">${COLORS.map(c=>`<div class="sw ${c.id===state.color?'sel':''}" data-c="${c.id}" style="background:${c.hex}" title="${c.name}"></div>`).join('')}</div>
   <div class="divider"></div>
   <label class="field">Идэвхтэй тал</label>
   <div class="seg" id="sideSeg"><button data-v="front" class="${state.side==='front'?'sel':''}">Урд</button><button data-v="back" class="${state.side==='back'?'sel':''}">Ард</button></div>
   <div class="divider"></div>
-  <label class="field">Энэ талд нэмэх</label>
-  <div class="row"><button class="btn sm" id="addImg" ${state.designImg?'':'disabled'}>🖼 Зураг тавих</button><button class="btn sm" id="addTxt">✍️ Текст нэмэх</button></div>
-  <input type="text" id="textInput" placeholder="Текст бичих..." value="${(L.text.val||'').replace(/"/g,'&quot;')}" style="margin-top:8px">
+  <label class="field">Энэ талд оруулах зураг (дарж сонгоно)</label>
+  <div class="img-pick" id="imgPick">${imgs.length?imgs.map(x=>`<div class="ip ${L.image.src===x.src?'sel':''}" data-i="${x.i}"><img src="${x.src}"></div>`).join(''):'<span style="color:var(--muted);font-size:13px">Зураг оруулаагүй байна.</span>'}</div>
+  ${L.image.src?`<button class="btn sm danger" id="delImg" style="margin-top:10px">🗑 Энэ талаас зураг авах</button>`:''}
   <div class="divider"></div>
-  <label class="field">Байршил & хэмжээ (стандарт)</label>
+  <label class="field">Байршил & хэмжээ</label>
   <div class="preset-grid" id="presetGrid">
     ${PLACEMENTS.map(pl=>`<button class="btn sm preset" data-p="${pl.id}">${pl.name}</button>`).join('')}
   </div>
-  <div class="note" style="margin-top:8px">Стандарт байршлаас сонгоход алдаагүй, жигд тавигдана. Хүсвэл доороос нарийн (чирэх/хэмжээ) тохируулж болно.</div>
-  ${selL?`<div class="divider"></div><label class="field">Нарийн тохиргоо: ${state.selected==='image'?'Зураг':'Текст'}</label>
-  <div class="ctrl-box"><div class="lab"><span>Хэмжээ</span><span>${Math.round(selL.scale*100)}%</span></div><input type="range" id="scaleR" min="0.3" max="2.2" step="0.02" value="${selL.scale}">
-  <div class="lab"><span>Эргэлт</span><span>${selL.rot}°</span></div><input type="range" id="rotR" min="-180" max="180" step="1" value="${selL.rot}">
-  <button class="btn sm danger" id="delLayer" style="width:100%;margin-top:12px">🗑 Устгах</button></div>`
-  :`<div class="note">Зураг/текст нэмээд, дэлгэц дээр дарж сонгоход хэмжээ/эргэлтийн тохиргоо энд гарна.</div>`}
+  <div class="note" style="margin-top:8px">Стандарт байршлаас сонгоход жигд тавигдана. Зургийг дэлгэц дээр чирж нарийн зөөж болно.</div>
   <div class="divider"></div>
   <div class="row"><button class="btn ghost" id="back">← Зураг</button><button class="btn primary" id="next" style="flex:1">Тоо ширхэг →</button></div>`;
 }
@@ -859,11 +864,11 @@ function panelQty(p){
     const rs=SIZES.reduce((a,s)=>a+(state.qty[c.id][s]||0),0);
     return `<tr><td style="text-align:left"><span class="cdot" style="background:${c.hex}"></span>${c.name}</td>${cells}<td class="rowsum">${rs||''}</td></tr>`;
   }).join('');
-  const chart=Object.entries(SIZE_CHART).map(([k,v])=>`${k}: цээж ${v.chest}см / урт ${v.len}см`).join(' · ');
+  const chart=SIZES.map(k=>`<div><b>${k}</b> — цээж ${SIZE_CHART[k].chest}см · урт ${SIZE_CHART[k].len}см${SIZE_SURCHARGE[k]?` <span style="color:var(--muted)">(+${SIZE_SURCHARGE[k].toLocaleString()}₮)</span>`:''}</div>`).join('');
   p.innerHTML=`<h2>3. Тоо ширхэг</h2>
   <p class="hint">Өнгө бүрээр размераар тоо ширхэгээ оруулна. Жишээ: Хар L 3ш, Цагаан M 5ш...</p>
   <table class="qtytbl" id="qtytbl"><thead>${head}</thead><tbody>${rows}</tbody></table>
-  <div class="sizechart">📐 Размер: ${chart}<br>XL +${SIZE_SURCHARGE.XL.toLocaleString()}₮ · XXL +${SIZE_SURCHARGE.XXL.toLocaleString()}₮</div>
+  <div class="sizechart"><div style="margin-bottom:6px;font-weight:600">📐 Размерын хэмжээ</div>${chart}</div>
   <div class="divider"></div>
   <div class="summary"><div class="total"><span>Нийт ширхэг</span><span id="qtyTotal">${totalUnits()} ш</span></div></div>
   <div class="row" style="margin-top:8px"><button class="btn ghost" id="back">← Дизайн</button><button class="btn primary" id="next" style="flex:1">Баталгаажуулах →</button></div>`;
@@ -913,7 +918,7 @@ function panelOrder(p){
   const atts=[];
   if(state.layers.front.image.src) atts.push({label:'Урд талын дизайн', src:state.layers.front.image.src});
   if(state.layers.back.image.src) atts.push({label:'Ард талын дизайн', src:state.layers.back.image.src});
-  if(state.rawImg) atts.push({label:'Эх файл (засваргүй)', src:state.rawImg});
+  state.images.forEach((src,i)=>{ if(src) atts.push({label:'Эх зураг '+(i+1), src:src}); });
   const attLine=atts.length?`📎 Хавсаргасан файл: ${atts.length}ш (дизайн зураг)`:'📎 Хавсаргасан файл: —';
   const viber=`🆕 ШИНЭ ЗАХИАЛГА  #${id}
 ────────────────
@@ -945,8 +950,8 @@ ${attLine}
   <ol class="next-steps">
     <li>Баталгаажуулах мэдэгдэл <b>${contact}</b> руу илгээгдлээ.</li>
     <li>Манай баг 1 ажлын өдөрт багтаан Viber/утсаар холбогдож, дизайныг эцэслэн баталгаажуулна.</li>
-    <li>Хэвлэлт хийгдэж, 3-5 хоногт ${cu.address?'таны хаягаар':'танд'} хүргэгдэнэ.</li>
-    <li>Асуудал гарвал <b>#${id}</b> дугаараа дурдаж бидэнтэй холбогдоорой.</li>
+    <li>Хэвлэлт тоо ширхэгээс хамаарч <b>2 цагаас – 3 өдрийн дотор</b> бэлэн болж хүргэгдэнэ. 30 ширхэгээс доош бол <b>өдөртөө</b> хүргэгдэнэ.</li>
+    <li>Асуудал гарвал <b>#${id}</b> дугаараа дурдаж <a href="mailto:cooltee.mgl@gmail.com" style="color:var(--accent)">cooltee.mgl@gmail.com</a> хаягаар бидэнтэй холбогдоорой.</li>
   </ol>
   <div class="note">📩 Энэ бол захиалагчид харагдах баталгаажуулалт. Demo — production-д энэ мэдэгдлийг имэйл/SMS-ээр автоматаар илгээнэ.</div>
   <details class="internal-box">
@@ -1093,33 +1098,34 @@ function realRemoveBG(dataURL,key,cb,err){
 function bindPanel(){
   if($('back')) $('back').onclick=()=>{state.selected=null;state.step=Math.max(1,state.step-1);render();};
   if(state.step===1){
-    const drop=$('drop'),file=$('file');
-    drop.onclick=()=>file.click();
-    file.onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{state.rawImg=fr.result;state.designImg=fr.result;renderPanel();};fr.readAsDataURL(f);};
+    [0,1].forEach(i=>{
+      const slot=document.querySelector('.up-slot[data-i="'+i+'"]'); const file=$('file'+i);
+      if(slot) slot.onclick=()=>file.click();
+      if(file) file.onchange=e=>{const f=e.target.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{state.images[i]=fr.result;renderPanel();};fr.readAsDataURL(f);};
+    });
     if($('rmbg')) $('rmbg').onclick=()=>{
       const key=$('apikey').value.trim();
-      if(!key){alert('Цэвэр арилгахын тулд remove.bg API key оруулна уу, эсвэл тунгалаг (transparent) PNG ашиглана уу.\\n\\nОдоогоор зураг эх хэвээрээ ашиглагдана.');return;}
+      if(!key){alert('Цэвэр арилгахын тулд remove.bg API key оруулна уу, эсвэл тунгалаг (transparent) PNG ашиглана уу.');return;}
       $('bgState').textContent='⏳ remove.bg...';
-      realRemoveBG(state.rawImg,key,res=>{state.designImg=res;renderPanel();},()=>{$('bgState').textContent='⚠ remove.bg алдаа — key/эрх шалгана уу';});
+      let pending=0;
+      [0,1].forEach(i=>{ if(state.images[i]){ pending++; realRemoveBG(state.images[i],key,res=>{state.images[i]=res;pending--;if(!pending){$('bgState').textContent='✓ Арилгасан';renderPanel();}},()=>{pending--;$('bgState').textContent='⚠ remove.bg алдаа — key шалгана уу';}); } });
     };
     if($('next')) $('next').onclick=()=>{state.step=2;render();};
   }
   if(state.step===2){
     document.querySelectorAll('#sw .sw').forEach(el=>el.onclick=()=>{state.color=el.dataset.c;renderStage();renderPanel();});
     document.querySelectorAll('#sideSeg button').forEach(b=>b.onclick=()=>{state.side=b.dataset.v;state.rotY=b.dataset.v==='back'?180:0;state.selected=null;render();});
-    $('textInput').oninput=e=>{state.layers[state.side].text.val=e.target.value;renderStage();};
-    $('addImg').onclick=()=>{if(!state.designImg)return;const L=state.layers[state.side].image;L.src=state.designImg;L.x=50;L.y=40;L.scale=1;L.rot=0;state.selected='image';render();};
-    $('addTxt').onclick=()=>{const v=$('textInput').value.trim()||'ТЕКСТ';state.layers[state.side].text.val=v;state.selected='text';render();};
+    document.querySelectorAll('#imgPick .ip').forEach(el=>el.onclick=()=>{
+      const i=+el.dataset.i; const L=state.layers[state.side].image;
+      L.src=state.images[i]; L.x=50; L.y=40; L.scale=1; L.rot=0; state.selected='image'; render();
+    });
+    if($('delImg')) $('delImg').onclick=()=>{ state.layers[state.side].image.src=null; state.selected=null; render(); };
     document.querySelectorAll('#presetGrid .preset').forEach(b=>b.onclick=()=>{
       const pl=PLACEMENTS.find(p=>p.id===b.dataset.p); const L=state.layers[state.side];
-      if(!L.image.src && !L.text.val){ alert('Эхлээд "Зураг тавих" эсвэл "Текст нэмэх" дарна уу.'); return; }
-      if(L.image.src){ L.image.x=pl.x; L.image.y=pl.y; L.image.scale=pl.scale; L.image.rot=0; }
-      if(L.text.val){ L.text.x=pl.x; L.text.y=L.image.src? Math.min(94,pl.y+16*pl.scale):pl.y; L.text.scale=pl.scale*0.7; L.text.rot=0; }
+      if(!L.image.src){ alert('Эхлээд зургаа дарж сонгоно уу.'); return; }
+      L.image.x=pl.x; L.image.y=pl.y; L.image.scale=pl.scale; L.image.rot=0;
       render();
     });
-    if($('scaleR')) $('scaleR').oninput=e=>{state.layers[state.side][state.selected].scale=+e.target.value;applyLayer(state.side,state.selected);e.target.previousElementSibling.querySelector('span:last-child').textContent=Math.round(e.target.value*100)+'%';};
-    if($('rotR')) $('rotR').oninput=e=>{state.layers[state.side][state.selected].rot=+e.target.value;applyLayer(state.side,state.selected);e.target.previousElementSibling.querySelector('span:last-child').textContent=e.target.value+'°';};
-    if($('delLayer')) $('delLayer').onclick=()=>{if(state.selected==='image')state.layers[state.side].image.src=null;else state.layers[state.side].text.val='';state.selected=null;render();};
     if($('next')) $('next').onclick=()=>{state.selected=null;state.step=3;render();};
   }
   if(state.step===3){
@@ -1156,7 +1162,7 @@ function bindPanel(){
       if(html) fp.innerHTML='<label class="field" style="margin-top:14px">Эцсийн харагдац</label><div class="fp-grid">'+html+'</div>';
     })();
     setTimeout(()=>{if(state.mode3d&&three){three.controls.autoRotate=true;setTimeout(()=>{if(three)three.controls.autoRotate=false;},2600);}else{const sp=$('spinBtn');if(sp)sp.click();}},400);
-    if($('restart')) $('restart').onclick=()=>{state=Object.assign(state,{step:1,rawImg:null,designImg:null,color:'white',side:'front',rotY:0,mode3d:false,qty:newQty(),customer:{name:'',phone:'',email:'',address:''},layers:newLayers(),selected:null,approved:false,orderId:null});render();};
+    if($('restart')) $('restart').onclick=()=>{state=Object.assign(state,{step:1,images:[null,null],color:'white',side:'front',rotY:0,mode3d:false,qty:newQty(),customer:{name:'',phone:'',email:'',address:''},layers:newLayers(),selected:null,approved:false,orderId:null});render();};
   }
 }
 

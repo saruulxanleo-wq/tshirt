@@ -996,8 +996,10 @@ function buildOrderPayload(){
 /* эцсийн харагдац (футболк + логог байрлуулсан) -> PNG */
 function composePreview(side){
   return new Promise(resolve=>{
+    let done=false; const fin=(v)=>{ if(done)return; done=true; resolve(v); };
+    setTimeout(()=>fin(''), 4000); // хамгаалалт: гацвал хоосон буцаана
     const L=state.layers[side];
-    if(!L.image.src && !L.text.val){ resolve(''); return; }
+    if(!L.image.src && !L.text.val){ fin(''); return; }
     const W=600,H=630, cv=document.createElement('canvas'); cv.width=W; cv.height=H;
     const ctx=cv.getContext('2d');
     const c=COLORS.find(c=>c.id===state.color);
@@ -1010,7 +1012,7 @@ function composePreview(side){
           ctx.save(); ctx.translate(tl.x/100*W, tl.y/100*H); ctx.rotate(tl.rot*Math.PI/180);
           ctx.fillStyle=c.txt; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='800 '+fs+'px Arial, sans-serif';
           tl.val.split('\n').forEach((ln,i)=>ctx.fillText(ln,0,i*fs)); ctx.restore(); }
-        try{ resolve(cv.toDataURL('image/png')); }catch(e){ resolve(''); }
+        try{ fin(cv.toDataURL('image/png')); }catch(e){ fin(''); }
       };
       if(L.image.src){ const dimg=new Image();
         dimg.onload=()=>{ const il=L.image, iw=W*0.34*il.scale, ih=iw*(dimg.height/dimg.width);
@@ -1019,7 +1021,7 @@ function composePreview(side){
         dimg.onerror=drawText; dimg.src=il.src;
       } else drawText();
     };
-    shirtImg.onerror=()=>resolve('');
+    shirtImg.onerror=()=>fin('');
     shirtImg.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
   });
 }

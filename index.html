@@ -978,9 +978,16 @@ function priceBreakdown(){
 }
 
 /* ===================== ORDER -> GOOGLE SHEET ===================== */
+function placementLabel(side){
+  const L=state.layers[side].image;
+  if(!L.src) return '—';
+  let name=''; PLACEMENTS.forEach(pl=>{ if(Math.abs(pl.x-L.x)<3&&Math.abs(pl.y-L.y)<4&&Math.abs(pl.scale-L.scale)<0.08) name=pl.name; });
+  const pos = name || ('х:'+Math.round(L.x)+'% у:'+Math.round(L.y)+'%');
+  return 'Зураг · '+pos+' · хэмжээ '+Math.round(L.scale*100)+'%';
+}
 function buildOrderPayload(){
   const bd=priceBreakdown();
-  const dsig=s=>{const L=state.layers[s];const a=[];if(L.image.src)a.push('зураг');if(L.text.val)a.push('текст:"'+L.text.val+'"');return a.join(' + ')||'—';};
+  const dsig=s=>placementLabel(s);
   return {
     orderId: state.orderId, datetime: new Date().toISOString(),
     product: PRODUCTS[state.product].name,

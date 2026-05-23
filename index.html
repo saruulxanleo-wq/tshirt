@@ -51,10 +51,17 @@
 
   /* ============ LIGHT THEME ============ */
   body.light{
-    --bg:#ffffff; --panel:#ffffff; --panel2:#f3f5f8; --line:#e5e8ec;
-    --txt:#15171c; --muted:#5b626e; --accent:#3b6cff; --accent2:#0fa968;
+    --bg:#f6f7f9; --panel:#ffffff; --panel2:#eef1f5; --line:#e3e7ee;
+    --txt:#14171c; --muted:#5d6470; --accent:#3b6cff; --accent2:#0fa968;
   }
   body{transition:background .25s, color .25s}
+  /* soft depth in light mode */
+  body.light .card, body.light .step3, body.light .testi, body.light .product,
+  body.light .cms-card, body.light .gal-item, body.light .ctrl-box{ box-shadow:0 8px 24px -16px rgba(20,35,80,.32); }
+  body.light .step3:hover, body.light .product:hover, body.light .gal-item:hover{ box-shadow:0 14px 30px -14px rgba(59,108,255,.32); }
+  body.light .stage{ background:radial-gradient(circle at 50% 28%, #eef1f7, #e1e6ef 72%); }
+  .product .prod-art{ background:radial-gradient(circle at 50% 42%, var(--panel2), transparent 72%); border-radius:14px; }
+  .cms-card.pad{padding:8px 6px 6px}
   .theme-btn{background:transparent;border:1px solid var(--line);color:var(--txt);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:15px;margin-left:10px;display:grid;place-items:center;transition:.15s}
   .theme-btn:hover{border-color:var(--accent)}
 
@@ -255,6 +262,11 @@
   <section class="sec" id="productSec">
     <div class="sec-head"><span class="eyebrow">БҮТЭЭГДЭХҮҮН</span><h2>Юу хэвлүүлэх вэ?</h2></div>
     <div class="products" id="products"></div>
+  </section>
+
+  <!-- FEATURES (CMS cards) -->
+  <section class="sec" id="featuresSec" style="display:none">
+    <div class="sec-head"><span class="eyebrow">ЯАГААД БИД</span><h2>Бидний давуу тал</h2></div>
     <div id="cmsCards"></div>
   </section>
 
@@ -662,10 +674,11 @@ async function loadCMS(){
   }
   // Карт блокууд
   const cards=await sanityFetch('*[_type=="card"]|order(order asc){title,text,"image":image.asset->url}');
-  const cc=$('cmsCards');
+  const cc=$('cmsCards'); const fsec=$('featuresSec');
   if(cards&&cards.length&&cc){
-    cc.innerHTML=`<div class="cms-cards">${cards.map(c=>`<div class="cms-card">${c.image?`<img src="${c.image}">`:''}${c.title?`<h3>${esc(c.title)}</h3>`:''}${c.text?`<p>${esc(c.text)}</p>`:''}</div>`).join('')}</div>`;
-  }
+    cc.innerHTML=`<div class="cms-cards">${cards.map(c=>`<div class="cms-card pad">${c.image?`<img src="${c.image}">`:''}${c.title?`<h3>${esc(c.title)}</h3>`:''}${c.text?`<p>${esc(c.text)}</p>`:''}</div>`).join('')}</div>`;
+    if(fsec) fsec.style.display='';
+  } else if(fsec){ fsec.style.display='none'; }
   // Бүтээгдэхүүний зураг/нэр/үнэ (CMS override)
   const prods=await sanityFetch('*[_type=="product"]{key,name,priceFrom,"image":image.asset->url}');
   if(prods&&prods.length){ state.cmsProducts={}; prods.forEach(p=>{ if(p.key) state.cmsProducts[p.key]=p; }); if(state.view==='home') renderProducts(); }
@@ -704,7 +717,7 @@ function renderProducts(){
     const cms=(state.cmsProducts&&state.cmsProducts[p.key])||{};
     const name=cms.name||p.name;
     const price=(cms.priceFrom!=null?cms.priceFrom:p.basePrice);
-    const art = cms.image ? `<img src="${cms.image}">` : productArt(p.key,'#dfe3e8');
+    const art = cms.image ? `<img src="${cms.image}">` : productArt(p.key,'#bcc3ce');
     const d=document.createElement('div');
     d.className='product'+(p.enabled?'':' soon');
     d.innerHTML=`${p.enabled?'':'<span class="soon-tag">Тун удахгүй</span>'}<div class="prod-art">${art}</div><div class="pname">${name}</div><div class="pprice">${(price||0).toLocaleString()}₮-с эхэлнэ</div>`;

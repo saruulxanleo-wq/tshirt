@@ -209,6 +209,10 @@
   .next-steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:8px;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
   .internal-box{border:1px dashed var(--line);border-radius:12px;padding:12px;margin-top:14px}
   .internal-box>summary{cursor:pointer;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .fp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .fp-item{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}
+  .fp-item img{width:100%;border-radius:8px;display:block}
+  .fp-lbl{font-size:12px;color:var(--muted);margin-top:6px}
   .att-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
   .att{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:6px;text-align:center}
   .att img{width:100%;height:64px;object-fit:contain;background:#2a2f3a;border-radius:6px}
@@ -935,6 +939,7 @@ ${attLine}
     <div>Захиалгын дугаар: <span class="num">#${id}</span></div>
     <div style="font-size:12px;color:var(--muted);margin-top:6px">Дэлгэцийн зургийг хадгалж эсвэл дугаараа тэмдэглэж аваарай.</div>
   </div>
+  <div id="finalPreview"></div>
   <div class="summary"><div><span>Төлөв</span><span style="color:var(--accent2)">Төлөгдсөн</span></div><div><span>Нийт</span><span>${bd.total.toLocaleString()}₮ (${bd.units}ш)</span></div></div>
   <label class="field" style="margin-top:14px">Цааш юу болох вэ?</label>
   <ol class="next-steps">
@@ -983,9 +988,42 @@ function buildOrderPayload(){
     backImg: state.layers.back.image.src || '',
   };
 }
-function logOrder(){
+/* эцсийн харагдац (футболк + логог байрлуулсан) -> PNG */
+function composePreview(side){
+  return new Promise(resolve=>{
+    const L=state.layers[side];
+    if(!L.image.src && !L.text.val){ resolve(''); return; }
+    const W=600,H=630, cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const ctx=cv.getContext('2d');
+    const c=COLORS.find(c=>c.id===state.color);
+    const svg=shirtSVG(c.hex, side);
+    const shirtImg=new Image();
+    shirtImg.onload=()=>{
+      ctx.drawImage(shirtImg,0,0,W,H);
+      const drawText=()=>{
+        if(L.text.val){ const tl=L.text, fs=H*0.064*tl.scale;
+          ctx.save(); ctx.translate(tl.x/100*W, tl.y/100*H); ctx.rotate(tl.rot*Math.PI/180);
+          ctx.fillStyle=c.txt; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='800 '+fs+'px Arial, sans-serif';
+          tl.val.split('\n').forEach((ln,i)=>ctx.fillText(ln,0,i*fs)); ctx.restore(); }
+        try{ resolve(cv.toDataURL('image/png')); }catch(e){ resolve(''); }
+      };
+      if(L.image.src){ const dimg=new Image();
+        dimg.onload=()=>{ const il=L.image, iw=W*0.34*il.scale, ih=iw*(dimg.height/dimg.width);
+          ctx.save(); ctx.translate(il.x/100*W, il.y/100*H); ctx.rotate(il.rot*Math.PI/180);
+          ctx.drawImage(dimg,-iw/2,-ih/2,iw,ih); ctx.restore(); drawText(); };
+        dimg.onerror=drawText; dimg.src=il.src;
+      } else drawText();
+    };
+    shirtImg.onerror=()=>resolve('');
+    shirtImg.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  });
+}
+
+async function logOrder(){
   if(!ORDER_SHEET_URL) return;
-  try{ fetch(ORDER_SHEET_URL,{method:'POST',body:JSON.stringify(buildOrderPayload())}).catch(()=>{}); }catch(e){}
+  const payload=buildOrderPayload();
+  try{ payload.previewFront=await composePreview('front'); payload.previewBack=await composePreview('back'); }catch(e){}
+  try{ fetch(ORDER_SHEET_URL,{method:'POST',body:JSON.stringify(payload)}).catch(()=>{}); }catch(e){}
 }
 
 /* ===================== BG REMOVAL ===================== */
@@ -1111,6 +1149,12 @@ function bindPanel(){
       state.orderId='PS-'+Math.floor(100000+Math.random()*900000);logOrder();state.step=6;render();};
   }
   if(state.step===6){
+    (async()=>{ const fp=$('finalPreview'); if(!fp) return;
+      const f=await composePreview('front'), b=await composePreview('back');
+      let html=''; if(f) html+=`<div class="fp-item"><img src="${f}"><div class="fp-lbl">Урд тал</div></div>`;
+      if(b) html+=`<div class="fp-item"><img src="${b}"><div class="fp-lbl">Ард тал</div></div>`;
+      if(html) fp.innerHTML='<label class="field" style="margin-top:14px">Эцсийн харагдац</label><div class="fp-grid">'+html+'</div>';
+    })();
     setTimeout(()=>{if(state.mode3d&&three){three.controls.autoRotate=true;setTimeout(()=>{if(three)three.controls.autoRotate=false;},2600);}else{const sp=$('spinBtn');if(sp)sp.click();}},400);
     if($('restart')) $('restart').onclick=()=>{state=Object.assign(state,{step:1,rawImg:null,designImg:null,color:'white',side:'front',rotY:0,mode3d:false,qty:newQty(),customer:{name:'',phone:'',email:'',address:''},layers:newLayers(),selected:null,approved:false,orderId:null});render();};
   }

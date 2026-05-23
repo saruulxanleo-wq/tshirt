@@ -692,8 +692,8 @@ function panelPay(p){
   p.innerHTML=`<h2>5. Төлбөр — QPay</h2>
   <p class="hint">Хүргэлт, холбоо барих мэдээллээ бөглөөд төлбөрөө хийнэ.</p>
   <div class="field-grp"><label>Нэр *</label><input type="text" id="cName" value="${(cu.name||'').replace(/"/g,'&quot;')}" placeholder="Овог нэр"></div>
-  <div class="field-grp"><label>Утас *</label><input type="tel" id="cPhone" value="${(cu.phone||'').replace(/"/g,'&quot;')}" placeholder="99xxxxxx"></div>
-  <div class="field-grp"><label>Имэйл</label><input type="email" id="cEmail" value="${(cu.email||'').replace(/"/g,'&quot;')}" placeholder="name@email.com"></div>
+  <div class="field-grp"><label>Утас * (8 оронтой)</label><input type="tel" id="cPhone" maxlength="8" value="${(cu.phone||'').replace(/"/g,'&quot;')}" placeholder="99112233"></div>
+  <div class="field-grp"><label>Имэйл * (баталгаажуулалт энд очно)</label><input type="email" id="cEmail" value="${(cu.email||'').replace(/"/g,'&quot;')}" placeholder="name@email.com"></div>
   <div class="field-grp"><label>Хүргэх хаяг *</label><textarea id="cAddr" placeholder="Дүүрэг, хороо, байр, орц, тоот">${(cu.address||'')}</textarea></div>
   <div class="divider"></div>
   <div class="summary">${qrows}<div class="total"><span>Нийт (${bd.units}ш)</span><span>${bd.total.toLocaleString()}₮</span></div></div>
@@ -783,6 +783,8 @@ function buildOrderPayload(){
     items: bd.items.map(it=>`${it.color} ${it.size}×${it.qty}`).join('; '),
     units: bd.units, total: bd.total,
     front: dsig('front'), back: dsig('back'),
+    frontImg: state.layers.front.image.src || '',
+    backImg: state.layers.back.image.src || '',
   };
 }
 function logOrder(){
@@ -906,7 +908,11 @@ function bindPanel(){
     drawQR($('qr'));
     const save=()=>{state.customer={name:$('cName').value.trim(),phone:$('cPhone').value.trim(),email:$('cEmail').value.trim(),address:$('cAddr').value.trim()};};
     ['cName','cPhone','cEmail','cAddr'].forEach(id=>$(id).oninput=save);
-    if($('paid')) $('paid').onclick=()=>{save();const c=state.customer;if(!c.name||!c.phone||!c.address){alert('Нэр, утас, хүргэх хаягаа бөглөнө үү.');return;}state.orderId='PS-'+Math.floor(100000+Math.random()*900000);logOrder();state.step=6;render();};
+    if($('paid')) $('paid').onclick=()=>{save();const c=state.customer;
+      if(!c.name||!c.phone||!c.address||!c.email){alert('Нэр, утас, имэйл, хүргэх хаяг — бүгдийг бөглөнө үү.');return;}
+      if(!/^\d{8}$/.test(c.phone)){alert('Утасны дугаар яг 8 оронтой тоо байх ёстой.');return;}
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)){alert('Имэйл хаягаа зөв оруулна уу (жишээ: name@email.com).');return;}
+      state.orderId='PS-'+Math.floor(100000+Math.random()*900000);logOrder();state.step=6;render();};
   }
   if(state.step===6){
     setTimeout(()=>{if(state.mode3d&&three){three.controls.autoRotate=true;setTimeout(()=>{if(three)three.controls.autoRotate=false;},2600);}else{const sp=$('spinBtn');if(sp)sp.click();}},400);

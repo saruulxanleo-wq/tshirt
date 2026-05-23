@@ -3,7 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Print Studio — Хэвлэлийн студи</title>
+<title>Poedolk Apparel — Custom хэвлэлийн студи</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon.png">
+<meta name="description" content="Өөрийн дизайнаа бодит 3D хувцсан дээр. Зургаа оруулаад, 360° хараад шууд захиалаарай.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://poedolk.shop">
+<meta property="og:title" content="Poedolk Apparel — Custom хэвлэлийн студи">
+<meta property="og:description" content="Өөрийн дизайнаа бодит 3D хувцсан дээр. Зургаа оруулаад шууд захиалаарай.">
+<meta property="og:image" content="https://poedolk.shop/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://poedolk.shop/og-image.png">
 <style>
   :root{
     --bg:#0e1014; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
@@ -14,7 +24,10 @@
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     background:var(--bg);color:var(--txt);line-height:1.5;-webkit-user-select:none;user-select:none}
   header{padding:16px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
-  header h1{font-size:17px;margin:0;font-weight:650}
+  header h1{font-size:17px;margin:0;font-weight:650;display:flex;align-items:center}
+  /* лого: цагаан дэвсгэртэй ч өдөр/шөнө хоёуланд цэвэр тохирно (blend) */
+  .brand-logo{height:28px;width:auto;display:block;filter:invert(1);mix-blend-mode:screen}
+  body.light .brand-logo{filter:none;mix-blend-mode:multiply}
   header .badge{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:3px 8px;border-radius:20px}
   header .home-link{margin-left:auto;font-size:13px;color:var(--muted);cursor:pointer}
   header .home-link:hover{color:var(--txt)}
@@ -238,8 +251,7 @@
 </head>
 <body>
 <header>
-  <h1>🖨️ Print Studio</h1>
-  <span class="badge">Прототип</span>
+  <h1 id="brandH1"><img class="brand-logo" src="logo.png" alt="Poedolk" onerror="this.style.display='none';this.parentNode.textContent='Poedolk';"></h1>
   <span class="home-link" id="homeLink">⌂ Нүүр</span>
   <button class="theme-btn" id="themeBtn" title="Гэрэл/харанхуй">🌙</button>
 </header>
@@ -673,7 +685,7 @@ async function loadCMS(){
   if(st){
     if(st.primaryColor) document.documentElement.style.setProperty('--accent', st.primaryColor);
     const h=document.querySelector('header h1');
-    if(h){ if(st.logo) h.innerHTML=`<img src="${st.logo}" style="height:24px;vertical-align:middle;border-radius:4px"> ${esc(st.siteName||'')}`; else if(st.siteName) h.textContent='🖨️ '+st.siteName; }
+    if(h && st.logo){ h.innerHTML=`<img class="brand-logo" src="${st.logo}" alt="logo">`; }
     const fn=$('footName'); if(fn&&st.siteName) fn.textContent=st.siteName;
     const fc=$('footContact'); if(fc){ let s=''; if(st.phone)s+='📞 '+esc(st.phone)+'<br>'; if(st.email)s+='✉️ '+esc(st.email); fc.innerHTML=s; }
   }

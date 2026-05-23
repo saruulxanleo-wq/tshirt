@@ -33,6 +33,18 @@
   .product .pname{font-weight:650;font-size:16px}
   .product .pprice{color:var(--muted);font-size:13px;margin-top:4px}
   .product .soon-tag{position:absolute;top:10px;right:10px;font-size:10px;background:var(--panel2);border:1px solid var(--line);padding:3px 8px;border-radius:20px;color:var(--muted)}
+  .cms-hero{position:relative;border-radius:16px;overflow:hidden;min-height:180px;display:grid;place-items:center;text-align:center;margin-top:6px}
+  .cms-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.45}
+  .cms-hero .t{position:relative;padding:34px 20px}
+  .cms-hero h2{font-size:30px;margin:0 0 8px}
+  .cms-hero p{margin:0;color:var(--muted);font-size:15px;max-width:640px}
+  .cms-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
+  @media(max-width:780px){.cms-cards{grid-template-columns:1fr}}
+  .cms-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .cms-card img{width:100%;height:150px;object-fit:cover}
+  .cms-card h3{margin:12px 14px 4px;font-size:16px}
+  .cms-card p{margin:0 14px 14px;color:var(--muted);font-size:13px}
+  .cms-sec-title{text-align:center;margin:34px 0 0;font-size:22px}
 
   .steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
   .step{font-size:13px;color:var(--muted);padding:7px 13px;border:1px solid var(--line);border-radius:30px;display:flex;gap:7px;align-items:center}
@@ -145,11 +157,14 @@
 
 <!-- HOMEPAGE -->
 <div class="wrap" id="homeView">
+  <div id="cmsBanner"></div>
   <div class="hero">
     <h2>Юу хэвлүүлэх вэ?</h2>
     <p>Бүтээгдэхүүнээ сонгоод зургаа оруулна уу. Дэвсгэрийг арилгаж, бодит 3D загвар дээр харуулна.</p>
   </div>
   <div class="products" id="products"></div>
+  <div id="cmsCards"></div>
+  <div id="cmsArticles"></div>
 </div>
 
 <!-- STUDIO -->
@@ -235,6 +250,10 @@ const PLACEMENTS = [
 ];
 const STEPS = ['Зураг','Дизайн','Тоо ширхэг','Батлах','Төлбөр','Захиалга'];
 const GLB_PATH = 'tshirt.glb';
+/* === Google Sheets бүртгэл === энд Apps Script Web App URL-ээ тавина (доорх зааврыг үз) */
+const ORDER_SHEET_URL = ''; // жишээ: 'https://script.google.com/macros/s/AKfyc.../exec'
+/* === Sanity CMS === нүүр хуудасны контентыг эндээс татна */
+const SANITY = { projectId:'4felqz5i', dataset:'production', apiVersion:'2024-01-01' };
 
 /* ===================== STATE ===================== */
 const newLayers = ()=>({
@@ -248,7 +267,7 @@ let state = {
   color:'white', side:'front', rotY:0, mode3d:false,
   qty:newQty(),
   customer:{name:'',phone:'',email:'',address:''},
-  layers:newLayers(), selected:null, approved:false,
+  layers:newLayers(), selected:null, approved:false, orderId:null,
 };
 
 /* ===================== HELPERS ===================== */
@@ -442,7 +461,45 @@ function render(){
   if(state.view==='home'){ renderProducts(); return; }
   renderSteps(); renderStage(); renderPanel();
 }
+/* ===================== SANITY CMS (нүүр контент) ===================== */
+async function sanityFetch(query){
+  if(!SANITY.projectId) return null;
+  const url=`https://${SANITY.projectId}.apicdn.sanity.io/v${SANITY.apiVersion}/data/query/${SANITY.dataset}?query=${encodeURIComponent(query)}`;
+  try{ const r=await fetch(url); if(!r.ok) return null; const j=await r.json(); return j.result; }catch(e){ return null; }
+}
+function esc(s){return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+let _cmsLoaded=false;
+async function loadCMS(){
+  if(_cmsLoaded||!SANITY.projectId) return; _cmsLoaded=true;
+  // Бренд тохиргоо
+  const st=await sanityFetch('*[_type=="siteSettings"][0]{siteName,"logo":logo.asset->url,primaryColor,phone,email}');
+  if(st){
+    if(st.primaryColor) document.documentElement.style.setProperty('--accent', st.primaryColor);
+    const h=document.querySelector('header h1');
+    if(h){ if(st.logo) h.innerHTML=`<img src="${st.logo}" style="height:24px;vertical-align:middle;border-radius:4px"> ${esc(st.siteName||'')}`; else if(st.siteName) h.textContent='🖨️ '+st.siteName; }
+  }
+  // Баннер
+  const hero=await sanityFetch('*[_type=="heroBanner"][0]{heading,subheading,"image":image.asset->url}');
+  const hb=$('cmsBanner');
+  if(hero&&hb&&(hero.heading||hero.image)){
+    hb.innerHTML=`<div class="cms-hero">${hero.image?`<img src="${hero.image}">`:''}<div class="t">${hero.heading?`<h2>${esc(hero.heading)}</h2>`:''}${hero.subheading?`<p>${esc(hero.subheading)}</p>`:''}</div></div>`;
+  }
+  // Карт блокууд
+  const cards=await sanityFetch('*[_type=="card"]|order(order asc){title,text,"image":image.asset->url}');
+  const cc=$('cmsCards');
+  if(cards&&cards.length&&cc){
+    cc.innerHTML=`<div class="cms-cards">${cards.map(c=>`<div class="cms-card">${c.image?`<img src="${c.image}">`:''}${c.title?`<h3>${esc(c.title)}</h3>`:''}${c.text?`<p>${esc(c.text)}</p>`:''}</div>`).join('')}</div>`;
+  }
+  // Нийтлэлүүд
+  const arts=await sanityFetch('*[_type=="article"]|order(publishedAt desc)[0...3]{title,excerpt,"cover":cover.asset->url}');
+  const ca=$('cmsArticles');
+  if(arts&&arts.length&&ca){
+    ca.innerHTML=`<h2 class="cms-sec-title">Нийтлэл</h2><div class="cms-cards">${arts.map(a=>`<div class="cms-card">${a.cover?`<img src="${a.cover}">`:''}${a.title?`<h3>${esc(a.title)}</h3>`:''}${a.excerpt?`<p>${esc(a.excerpt)}</p>`:''}</div>`).join('')}</div>`;
+  }
+}
+
 function renderProducts(){
+  loadCMS();
   const el=$('products'); el.innerHTML='';
   Object.values(PRODUCTS).forEach(p=>{
     const d=document.createElement('div');
@@ -628,7 +685,7 @@ function panelPay(p){
 }
 function panelOrder(p){
   const bd=priceBreakdown(), cu=state.customer, c=COLORS.find(c=>c.id===state.color);
-  const id='PS-'+Math.floor(100000+Math.random()*900000);
+  const id=state.orderId||('PS-'+Math.floor(100000+Math.random()*900000));
   const qline=bd.items.map(it=>`  ${it.color} ${it.size} × ${it.qty}`).join('\n');
   const sideDesc=(L,nm)=>{const a=[];if(L.image.src)a.push('зураг');if(L.text.val)a.push('текст:"'+L.text.val+'"');return a.length?nm+': '+a.join(', '):null;};
   const dlines=[sideDesc(state.layers.front,'Урд'),sideDesc(state.layers.back,'Ард')].filter(Boolean).join('\n');
@@ -692,6 +749,25 @@ function priceBreakdown(){
   let total=0,units=0,items=[];
   COLORS.forEach(c=>SIZES.forEach(s=>{const q=state.qty[c.id][s]||0;if(q>0){const unit=base+(SIZE_SURCHARGE[s]||0)+printPerUnit;total+=unit*q;units+=q;items.push({color:c.name,size:s,qty:q,unit});}}));
   return {base,imgSides,txtSides,printPerUnit,total,units,items};
+}
+
+/* ===================== ORDER -> GOOGLE SHEET ===================== */
+function buildOrderPayload(){
+  const bd=priceBreakdown();
+  const dsig=s=>{const L=state.layers[s];const a=[];if(L.image.src)a.push('зураг');if(L.text.val)a.push('текст:"'+L.text.val+'"');return a.join(' + ')||'—';};
+  return {
+    orderId: state.orderId, datetime: new Date().toISOString(),
+    product: PRODUCTS[state.product].name,
+    name: state.customer.name, phone: state.customer.phone,
+    email: state.customer.email, address: state.customer.address,
+    items: bd.items.map(it=>`${it.color} ${it.size}×${it.qty}`).join('; '),
+    units: bd.units, total: bd.total,
+    front: dsig('front'), back: dsig('back'),
+  };
+}
+function logOrder(){
+  if(!ORDER_SHEET_URL) return;
+  try{ fetch(ORDER_SHEET_URL,{method:'POST',body:JSON.stringify(buildOrderPayload())}).catch(()=>{}); }catch(e){}
 }
 
 /* ===================== BG REMOVAL ===================== */
@@ -810,11 +886,11 @@ function bindPanel(){
     drawQR($('qr'));
     const save=()=>{state.customer={name:$('cName').value.trim(),phone:$('cPhone').value.trim(),email:$('cEmail').value.trim(),address:$('cAddr').value.trim()};};
     ['cName','cPhone','cEmail','cAddr'].forEach(id=>$(id).oninput=save);
-    if($('paid')) $('paid').onclick=()=>{save();const c=state.customer;if(!c.name||!c.phone||!c.address){alert('Нэр, утас, хүргэх хаягаа бөглөнө үү.');return;}state.step=6;render();};
+    if($('paid')) $('paid').onclick=()=>{save();const c=state.customer;if(!c.name||!c.phone||!c.address){alert('Нэр, утас, хүргэх хаягаа бөглөнө үү.');return;}state.orderId='PS-'+Math.floor(100000+Math.random()*900000);logOrder();state.step=6;render();};
   }
   if(state.step===6){
     setTimeout(()=>{if(state.mode3d&&three){three.controls.autoRotate=true;setTimeout(()=>{if(three)three.controls.autoRotate=false;},2600);}else{const sp=$('spinBtn');if(sp)sp.click();}},400);
-    if($('restart')) $('restart').onclick=()=>{state=Object.assign(state,{step:1,rawImg:null,designImg:null,color:'white',side:'front',rotY:0,mode3d:false,qty:newQty(),customer:{name:'',phone:'',email:'',address:''},layers:newLayers(),selected:null,approved:false});render();};
+    if($('restart')) $('restart').onclick=()=>{state=Object.assign(state,{step:1,rawImg:null,designImg:null,color:'white',side:'front',rotY:0,mode3d:false,qty:newQty(),customer:{name:'',phone:'',email:'',address:''},layers:newLayers(),selected:null,approved:false,orderId:null});render();};
   }
 }
 
